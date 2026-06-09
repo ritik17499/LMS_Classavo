@@ -223,6 +223,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 # ──────────────────────────────────────────────────────────────────────────────
 
 if not DEBUG:
+    # Render (and most PaaS) terminate TLS at the load balancer and forward
+    # plain HTTP to the container.  Without this, Django sees every request as
+    # HTTP and SECURE_SSL_REDIRECT issues a 301 — breaking the health check.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Use the proxy-supplied Host header so ALLOWED_HOSTS matches correctly.
+    USE_X_FORWARDED_HOST = True
+
     SECURE_HSTS_SECONDS = 31_536_000          # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_SSL_REDIRECT = True
