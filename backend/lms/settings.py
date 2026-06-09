@@ -207,11 +207,8 @@ SIMPLE_JWT = {
 # CORS
 # ──────────────────────────────────────────────────────────────────────────────
 
-CORS_ALLOWED_ORIGINS = config(
-    'CORS_ALLOWED_ORIGINS',
-    default='http://localhost:3000',
-    cast=Csv(),
-)
+_cors_raw = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000', cast=Csv())
+CORS_ALLOWED_ORIGINS = [o if o.startswith('http') else f'https://{o}' for o in _cors_raw]
 # Required so browsers include the httpOnly refresh-token cookie on cross-origin requests
 CORS_ALLOW_CREDENTIALS = True
 

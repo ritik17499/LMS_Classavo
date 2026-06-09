@@ -5,7 +5,8 @@ import axios from 'axios'
 import { useAuthStore } from '@/store/authStore'
 import { parseJwt } from '@/lib/utils'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+const _apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+const BASE_URL = _apiUrl.startsWith('http') ? _apiUrl : `https://${_apiUrl}`
 
 /**
  * Silently exchanges the httpOnly refresh-token cookie for a new access token.

@@ -26,7 +26,7 @@ services:
         fromService:
           name: lms-backend
           type: web
-          property: url      # → https://lms-backend-xxxx.onrender.com
+          property: host     # → lms-backend-xxxx.onrender.com (app prepends https://)
 
   # ── Django backend ────────────────────────────────────────────────────────────
   - type: web
@@ -55,7 +55,7 @@ services:
         fromService:
           name: lms-frontend
           type: web
-          property: url      # → https://lms-frontend-xxxx.onrender.com
+          property: host     # → lms-frontend-xxxx.onrender.com (settings prepends https://)
 
       - key: DB_HOST
         fromDatabase:
