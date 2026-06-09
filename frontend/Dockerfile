@@ -10,8 +10,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# next.config.ts sets output: 'standalone' which bundles all runtime files into
-# .next/standalone so the final image doesn't need node_modules.
+# Receive the API URL from the build host (Render passes it as a --build-arg).
+# NEXT_PUBLIC_* vars are replaced inline at build time by Next.js — they must
+# be present during `npm run build` or they are baked in as `undefined`.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
