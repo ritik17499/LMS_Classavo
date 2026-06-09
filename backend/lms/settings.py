@@ -230,9 +230,19 @@ if not DEBUG:
     # Use the proxy-supplied Host header so ALLOWED_HOSTS matches correctly.
     USE_X_FORWARDED_HOST = True
 
+    # Wildcard covers all *.onrender.com subdomains so Render's health checker
+    # is never rejected by ALLOWED_HOSTS regardless of how the Host header
+    # is set during deployment (env var may not resolve on first boot).
+    if '.onrender.com' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('.onrender.com')
+
     SECURE_HSTS_SECONDS = 31_536_000          # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_SSL_REDIRECT = True
+    # Render's internal health checker hits /health/ over plain HTTP.
+    # Without this exemption Django issues a 301 redirect and Render marks
+    # the deployment as failed.
+    SECURE_REDIRECT_EXEMPT = [r'^health/$']
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
