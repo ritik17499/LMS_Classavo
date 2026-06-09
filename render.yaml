@@ -1,0 +1,90 @@
+# Render Blueprint — provisions frontend + backend + PostgreSQL in one shot.
+#
+# fromService references are resolved by Render before any build starts:
+#   - lms-frontend gets NEXT_PUBLIC_API_URL from lms-backend (build-time)
+#   - lms-backend  gets CORS_ALLOWED_ORIGINS from lms-frontend (run-time)
+#   - lms-backend  gets ALLOWED_HOSTS from its own hostname (run-time)
+#   - lms-backend  gets all DB_* vars from the managed database
+#
+# Free-tier limits:
+#   - Web services spin down after 15 min of inactivity (~30 s cold start).
+#     Change plan: free → plan: starter ($7/mo each) for always-on.
+#   - Managed PostgreSQL free instances are paused after 90 days of inactivity.
+
+services:
+
+  # ── Next.js frontend ─────────────────────────────────────────────────────────
+  - type: web
+    name: lms-frontend
+    env: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: free
+    envVars:
+      # Resolved before npm run build so the URL is baked into the JS bundle.
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: lms-backend
+          type: web
+          property: url      # → https://lms-backend-xxxx.onrender.com
+
+  # ── Django backend ────────────────────────────────────────────────────────────
+  - type: web
+    name: lms-backend
+    env: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    healthCheckPath: /health/
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true   # Render generates a cryptographically secure value
+
+      - key: DEBUG
+        value: false
+
+      # Render resolves this service's own hostname before the container starts.
+      - key: ALLOWED_HOSTS
+        fromService:
+          name: lms-backend
+          type: web
+          property: host     # → lms-backend-xxxx.onrender.com  (no https://)
+
+      # Populated once the frontend service URL is known.
+      - key: CORS_ALLOWED_ORIGINS
+        fromService:
+          name: lms-frontend
+          type: web
+          property: url      # → https://lms-frontend-xxxx.onrender.com
+
+      - key: DB_HOST
+        fromDatabase:
+          name: lms-postgres
+          property: host
+
+      - key: DB_PORT
+        fromDatabase:
+          name: lms-postgres
+          property: port
+
+      - key: DB_NAME
+        fromDatabase:
+          name: lms-postgres
+          property: database
+
+      - key: DB_USER
+        fromDatabase:
+          name: lms-postgres
+          property: user
+
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: lms-postgres
+          property: password
+
+# ── Managed PostgreSQL ────────────────────────────────────────────────────────
+databases:
+  - name: lms-postgres
+    databaseName: lms_db
+    user: lms_user
+    plan: free

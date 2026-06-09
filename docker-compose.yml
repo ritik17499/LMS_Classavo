@@ -1,0 +1,67 @@
+# Local development stack: PostgreSQL + Django backend + Next.js frontend.
+#
+# Usage:
+#   cp backend/.env.example backend/.env           # fill in values
+#   cp frontend/.env.local.example frontend/.env.local
+#   docker compose up --build
+#
+# The backend container overrides DB_HOST=db so Django connects to the PostgreSQL
+# service by its container name rather than localhost.
+# NEXT_PUBLIC_API_URL points to localhost:8000 because it runs in the browser
+# (client-side), not inside the container network.
+
+services:
+
+  # ── PostgreSQL 16 ────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-lms_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-lms_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # ── Django backend ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    # Override the production CMD with the dev server for hot-reloading
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      # Mount source code so edits are reflected without a rebuild
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override whatever DB_HOST is set to in .env so Django reaches the db service
+      DB_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── Next.js frontend ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
