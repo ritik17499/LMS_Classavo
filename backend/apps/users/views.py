@@ -33,12 +33,17 @@ _REFRESH_COOKIE_PATH = '/api/auth/token/refresh/'
 
 def _refresh_cookie_kwargs(value: str) -> dict:
     """Centralise cookie attributes so login and refresh views stay in sync."""
+    secure = not settings.DEBUG
     return {
         'key': _REFRESH_COOKIE_NAME,
         'value': value,
         'httponly': True,
-        'secure': not settings.DEBUG,
-        'samesite': 'Lax',
+        'secure': secure,
+        # SameSite=None is required in production: frontend and backend are on different
+        # subdomains (*.onrender.com), so the browser blocks Lax cookies on cross-origin
+        # POST requests. SameSite=None requires Secure=True, which is set above.
+        # Locally (DEBUG=True), Lax is safe because both services share localhost.
+        'samesite': 'None' if secure else 'Lax',
         'max_age': int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
         'path': _REFRESH_COOKIE_PATH,
     }
